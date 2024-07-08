@@ -11,10 +11,10 @@
 #define BMS_H_
 	
 //Calibration multipliers and offset
-#define VOLTAGE_MULTIPLIER			1.2288031
+#define VOLTAGE_MULTIPLIER			1.24727513//.24715261//.2288031
 #define VOLTAGE_OFFSET				0
-#define POS_CURRENT_MULTIPLIER		1.14942528//0.8514162
-#define NEG_CURRENT_MULTIPLIER		1.15315315//0.8514162
+#define POS_CURRENT_MULTIPLIER		1.11557340//.14942528//0.8514162
+#define NEG_CURRENT_MULTIPLIER		1.11756817//.10603290//1.15315315//0.8514162
 #define CURRENT_OFFSET				0
 #define POWER_MULTIPLIER			1
 #define POWER_OFFSET				0
@@ -68,14 +68,14 @@
 //conversion times for each bit setting.
 //Related also to Shunt voltage
 
-#define CONVESION_TIME_140us		0
-#define CONVESION_TIME_204us		1
-#define CONVESION_TIME_332us		2
-#define CONVESION_TIME_588us		3
-#define CONVESION_TIME_1100us		4 //Default value after reset
-#define CONVESION_TIME_2116us		5
-#define CONVESION_TIME_4156us		6
-#define CONVESION_TIME_8224us		7
+#define CONVERSION_TIME_140us		0
+#define CONVERSION_TIME_204us		1
+#define CONVERSION_TIME_332us		2
+#define CONVERSION_TIME_588us		3
+#define CONVERSION_TIME_1100us		4 //Default value after reset
+#define CONVERSION_TIME_2116us		5
+#define CONVERSION_TIME_4156us		6
+#define CONVERSION_TIME_8224us		7
 
 
 //Operating Mode

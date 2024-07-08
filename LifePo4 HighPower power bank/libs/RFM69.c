@@ -455,6 +455,9 @@ void RF_unselect()
 		RF_select();
 		SPI_write(REG_FIFO);
 		RFM69_ReadBuff(&rfRxHeader, 5);
+		if(rfRxHeader.rxtxBuffLenght <= 5 || rfRxHeader.rxtxBuffLenght > RF69_MAX_DATA_LEN){
+			rfRxHeader.rxtxBuffLenght = 10;
+		}
 		rfRxHeader.rxtxBuffLenght -= 5;
 		RFM69_ReadBuff(&DATA, rfRxHeader.rxtxBuffLenght);
 		RF_unselect();

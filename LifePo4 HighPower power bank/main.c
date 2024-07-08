@@ -21,7 +21,7 @@
 #define VFDSCREEN		0x03
 #define DEVMODULE		0x22
 #define DEVMODULE2		0xFE
-
+#define RADIOMODE		TX_UNMUTE
 
 
 #define NETWORKID		33
@@ -121,6 +121,11 @@ int main(void)
 	I2C_write_batch(0x27, (uint8_t *)&outputs_regs, 3);
 
 	
+	gpio_set_pin_level(LCD_RST, false);
+	delay_ms(10);
+	gpio_set_pin_level(LCD_RST, true);
+	delay_ms(10);
+	
 	u8g2_Setup_st7565_zolen_128x64_f( &lcd, U8G2_MIRROR_VERTICAL, vfd_spi, u8x8_avr_gpio_and_delay);	// contrast: 110
 	u8g2_InitDisplay(&lcd);
 
@@ -148,6 +153,7 @@ int main(void)
 	//u8g2_DrawStr(&lcd, 7, 49, (char *)__FILE__);//
 	u8g2_SendBuffer(&lcd);
 	
+	
 	PowerMeterInit(INA226ADR);
 	delay_ms(150);
 	
@@ -159,6 +165,17 @@ int main(void)
 	WDT->CLEAR.bit.CLEAR = 0xA5;
 	gpio_set_pin_level(LED_G, false);
 	
+	//for(uint8_t i = 0; i<128; i++){
+		//u8g2_SetContrast(&lcd, i);
+		//sprintf((char *)rssiData, "%04d" , i);
+		//u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
+		//u8g2_DrawStr(&lcd, 100, 11, (char *)rssiData);//
+		//u8g2_SendBuffer(&lcd);
+		//u8g2_ClearBuffer(&lcd);
+		//gpio_toggle_pin_level(LED_G);
+		//delay_ms(100);
+		//
+	//}
 		
 	while (1) {
 		WDT->CLEAR.bit.CLEAR = 0xA5;
@@ -202,7 +219,7 @@ int main(void)
 					delay_us(1);
 			}}
 		
-		if (RTC_IRQ_Ready() && TX_UNMUTE)
+		if (RTC_IRQ_Ready())
 		{
 			rtc_sync(&sys_rtc);
 			PowerMeterMeasure(&battery);
@@ -222,7 +239,7 @@ int main(void)
 				SET_BIT(portValue[1], EXT_LED);
 			}
 			
-			if(rfReportTime==0){
+			if(rfReportTime==0 && RADIOMODE){
 				rfReportTime=REPORTMSGTIME;
 				rfTxDataPack.destinationAddr = ALLNODES;
 				rfTxDataPack.senderAddr = NODEID;
@@ -238,6 +255,8 @@ int main(void)
 		}
 		
 		if (scrUpdateRequest){
+			//u8g2_InitDisplay(&lcd);
+			
 			u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
 			u8g2_DrawStr(&lcd, 100, 11, (char *)rssiData);//
 			
