@@ -52,6 +52,20 @@ uint8_t PowerMeterMeasure(powerData * pmStruc){
 	pmStruc->voltage = (uint16_t)milliVoltVal;
 	pmStruc->current = (int16_t)milliAmptVal;
 	pmStruc->power = ((milliAmptVal)*milliVoltVal)/1000000;
-	pmStruc->energy= (milliVoltVal < 14250) ? pmStruc->energy+pmStruc->power/3600 : 175;
+	//pmStruc->energy= (milliVoltVal < 14250) ? pmStruc->energy+pmStruc->power/3600 : BAT_FULL_ENEERGY;
+	
+	if (milliVoltVal < 14250)
+	{
+		pmStruc->energy = pmStruc->energy+pmStruc->power/3600;
+	}else{
+		
+		if (pmStruc->energy > BAT_FULL_ENEERGY)
+		{
+			pmStruc->lastChargerErr = pmStruc->energy - BAT_FULL_ENEERGY;
+		}
+		pmStruc->energy =  BAT_FULL_ENEERGY;
+	}
+	
+	pmStruc->capacity = (uint8_t)((pmStruc->energy / BAT_FULL_ENEERGY) * 100);
 	return 1;
 }

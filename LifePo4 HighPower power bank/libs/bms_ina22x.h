@@ -18,7 +18,7 @@
 #define CURRENT_OFFSET				0
 #define POWER_MULTIPLIER			1
 #define POWER_OFFSET				0
-
+#define BAT_FULL_ENEERGY			175				
 
 
 
@@ -163,11 +163,13 @@ exceeds the value programmed in the Alert Limit Register.
 
 
 typedef struct powerMeterData {
-	uint16_t pmId;				//PowerMeter ID and Die Revision ID Bits
-	int16_t current;			//current shunt reg
-	uint16_t voltage;			//voltage reg
-	float power;				//power reg
+	uint32_t pmId;				//PowerMeter ID and Die Revision ID Bits
+	int32_t current;			//current shunt reg
+	uint32_t voltage;			//voltage reg
+	uint8_t capacity;			//SOC capacity in percent
+	float power;				//power reg (load or charge consumption)
 	float energy;
+	float lastChargerErr;
 } powerData;
 
 

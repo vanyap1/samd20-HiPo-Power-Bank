@@ -448,26 +448,28 @@ void RF_unselect()
 
 // Interrupt Service Routine
 
- rfHeader* data_ready(){
-	 
+rfHeader* data_ready(){
+	
 	if (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY){
-		writeReg(REG_OPMODE , RF69_MODE_STANDBY);		 
+		memset(DATA, 0, sizeof(DATA));
+		writeReg(REG_OPMODE , RF69_MODE_STANDBY);
 		RF_select();
 		SPI_write(REG_FIFO);
 		RFM69_ReadBuff(&rfRxHeader, 5);
-		if(rfRxHeader.rxtxBuffLenght <= 5 || rfRxHeader.rxtxBuffLenght > RF69_MAX_DATA_LEN){
-			rfRxHeader.rxtxBuffLenght = 10;
+		rfRxHeader.rxtxBuffLenght -= 4;
+		if(rfRxHeader.rxtxBuffLenght >= (RF69_MAX_DATA_LEN-5)){
+			rfRxHeader.rxtxBuffLenght = RF69_MAX_DATA_LEN-5;
+		}else{
+			rfRxHeader.dataValid=1;
 		}
-		rfRxHeader.rxtxBuffLenght -= 5;
 		RFM69_ReadBuff(&DATA, rfRxHeader.rxtxBuffLenght);
 		RF_unselect();
 		writeReg(REG_DIOMAPPING1 , 0x40);
-		writeReg(REG_OPMODE , RF69_ListenAbort); 
+		writeReg(REG_OPMODE , RF69_ListenAbort);
 		rfRxHeader.rssi = readRSSI(0);
 		setMode(RF69_MODE_RX);
-		rfRxHeader.dataValid=1;
 		return &rfRxHeader;
-	}else{
+		}else{
 		rfRxHeader.dataValid=0;
 		return &rfRxHeader;
 	}

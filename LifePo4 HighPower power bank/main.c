@@ -55,7 +55,9 @@
 
 //BMS
 #define  INA226ADR					0x40
-powerData battery;
+powerData battery;// = {.energy = 170.0f};
+
+
 u8g2_t lcd;
 ramIDS ramInfo;
 
@@ -268,9 +270,13 @@ int main(void)
 			u8g2_DrawLine(&lcd, 3,12, 124,12);
 			sprintf(batData, "%05dmV  %05dmA", battery.voltage, battery.current);
 			u8g2_DrawStr(&lcd, 3, 24, (char *)batData);
-			
+						
 			sprintf(batData, "%3.1fW  %3.3fWh", battery.power, battery.energy);
 			u8g2_DrawStr(&lcd, 3, 35, (char *)batData);
+			
+			sprintf(batData, "%03d Err: %2.1fWh", battery.capacity, battery.lastChargerErr);
+			u8g2_DrawStr(&lcd, 3, 46, (char *)batData);
+			
 			u8g2_SendBuffer(&lcd);
 			u8g2_ClearBuffer(&lcd);
 			scrUpdateRequest = 0;
