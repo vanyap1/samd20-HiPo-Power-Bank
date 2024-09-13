@@ -105,12 +105,12 @@ int main(void)
 	
 	uint8_t rssiData[24];
 	uint8_t keyVal[24];
-	uint8_t testMsg[24];
-	uint8_t rtcData[24];
-	uint8_t batData[24];
+	uint8_t testMsg[256];
+	uint8_t rtcData[64];
+	uint8_t batData[64];
 	//uint8_t spiRamData[33];
 	//uint8_t spiDataBuffer[16];
-	char debugString[128];
+	char debugString[256];
 	uint8_t outputs_regs[] = {0x06, 0x07, 0xff};
 	uint8_t portValue[] = {0x02, 0xff, 0xff};
 	uint8_t keyValues[2];
@@ -178,7 +178,6 @@ int main(void)
 		//delay_ms(100);
 		//
 	//}
-		
 	while (1) {
 		WDT->CLEAR.bit.CLEAR = 0xA5;
 		while(WDT->STATUS.bit.SYNCBUSY);
@@ -210,12 +209,15 @@ int main(void)
 
 			switch(rfRxDataMsg->opcode) {
 				case MSG:
-					memcpy(&testMsg, DATA, sizeof(testMsg));
+					memcpy(&testMsg, DATA, rfRxDataMsg->rxtxBuffLenght);
 				break;
 				case RTC_SYNC:
-					memcpy(&sys_rtc, DATA, sizeof(sys_rtc));
+					if(sizeof(sys_rtc) == rfRxDataMsg->rxtxBuffLenght){
+						memcpy(&sys_rtc, DATA, sizeof(sys_rtc));
 					rtc_set(&sys_rtc);
 					if(sys_rtc.second == 0){lcdInitReq=1;}
+					}
+					
 				break;
 				default:
 					delay_us(1);
