@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "driver_examples.h"
+//#include "driver_examples.h"
 #include "driver.h"
 #include "u8g2.h"
 
@@ -33,6 +33,11 @@
 #define MSG				0x82
 #define POWERBANK		0x83
 #define REPORTMSGTIME	3
+#define GPIO_CTRL		0x84		//reserved for lora relay module (Send with tis ID to module)
+#define GPIO_INFO		0x85		//reserved for lora relay module (Module will answer with this ID)
+#define GPIO_ALARM		0x86		//reserved for lora relay module (Alarm message)
+#define MAIN_UPS		0x12		//Home ups
+
 
 
 
@@ -56,7 +61,7 @@
 //BMS
 #define  INA226ADR					0x40
 powerData battery;// = {.energy = 170.0f};
-
+powerData mainBattery;
 
 u8g2_t lcd;
 ramIDS ramInfo;
@@ -108,6 +113,7 @@ int main(void)
 	uint8_t testMsg[256];
 	uint8_t rtcData[64];
 	uint8_t batData[64];
+	uint8_t upsData[64];
 	//uint8_t spiRamData[33];
 	//uint8_t spiDataBuffer[16];
 	char debugString[256];
@@ -115,8 +121,7 @@ int main(void)
 	uint8_t portValue[] = {0x02, 0xff, 0xff};
 	uint8_t keyValues[2];
 	uint8_t intCount = 0;
-	uint8_t lcdInitReq = 0;
-	//rtc_set(&sys_rtc);
+	rtc_set(&sys_rtc);
 	uint8_t scrUpdateRequest = 0;
 	uint8_t backLightTime = 10;
 	uint8_t rfReportTime = REPORTMSGTIME;
@@ -153,11 +158,12 @@ int main(void)
 	u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
 	u8g2_DrawStr(&lcd, 7, 40, (char *)__TIMESTAMP__);//
 	//u8g2_DrawStr(&lcd, 7, 49, (char *)__FILE__);//
-	u8g2_SendBuffer(&lcd);
 	
+	u8g2_SendBuffer(&lcd);
+	u8g2_ClearBuffer(&lcd);
 	
 	PowerMeterInit(INA226ADR);
-	delay_ms(150);
+	delay_ms(2150);
 	
 	 
 		
@@ -183,7 +189,7 @@ int main(void)
 		while(WDT->STATUS.bit.SYNCBUSY);
 		
 		if (EXT_I2C_IRQ_isReady()){
-			delay_ms(10);
+			//delay_ms(1);
 			I2C_read_batch(UI_MODULE, (uint8_t *)&keyValues, sizeof(keyValues));
 			
 			if (GET_BIT(keyValues[0], EXT_SV3) && GET_BIT(keyValues[0], EXT_SV1) == 0){
@@ -202,6 +208,7 @@ int main(void)
 		//u8g2_DrawStr(&lcd, 70, 23, (char *)keyVal);
 
 		if (rf_isReady()) {
+			gpio_set_pin_level(LED_G, true);
 			rfHeader* rfRxDataMsg=rfMsgType();
 			//sprintf((char *)rf_str , "%02X%02X%02X%02X%02X; RSSI: %d | ",  rfRxDataMsg->senderAddr, rfRxDataMsg->destinationAddr, rfRxDataMsg->opcode,  rfRxDataMsg->rxtxBuffLenght,  rfRxDataMsg->dataCRC, rfRxDataMsg->rssi);
 			sprintf((char *)rssiData, "%04d" , rfRxDataMsg->rssi);
@@ -210,22 +217,24 @@ int main(void)
 			switch(rfRxDataMsg->opcode) {
 				case MSG:
 					memcpy(&testMsg, DATA, rfRxDataMsg->rxtxBuffLenght);
-				break;
+					DebugSerialWrite(testMsg, strlen(testMsg));					
+					break;
 				case RTC_SYNC:
-					if(sizeof(sys_rtc) == rfRxDataMsg->rxtxBuffLenght){
-						memcpy(&sys_rtc, DATA, sizeof(sys_rtc));
+					memcpy(&sys_rtc, DATA, sizeof(sys_rtc));
 					rtc_set(&sys_rtc);
-					if(sys_rtc.second == 0){lcdInitReq=1;}
-					}
-					
-				break;
+					break;
+				
+				case MAIN_UPS:
+					memcpy(&mainBattery, (void *)DATA, sizeof(mainBattery));
+					break;
 				default:
 					delay_us(1);
-			}}
+			}
+			gpio_set_pin_level(LED_G, false);
+			}
 		
 		if (RTC_IRQ_Ready())
-		{
-			rtc_sync(&sys_rtc);
+		{	rtc_sync(&sys_rtc);
 			PowerMeterMeasure(&battery);
 			if (backLightTime !=0){
 				SET_BIT(portValue[1], LCD_BLK);
@@ -237,7 +246,7 @@ int main(void)
 				backLightTime=BACKLIGHTTIME;
 			}
 			
-			if (battery.current > 30){
+			if (battery.current > 30 || /*mainBattery*/ abs(mainBattery.current) > 1000){
 				RESET_BIT(portValue[1], EXT_LED);
 			}else{
 				SET_BIT(portValue[1], EXT_LED);
@@ -261,24 +270,44 @@ int main(void)
 		if (scrUpdateRequest){
 			//u8g2_InitDisplay(&lcd);
 			
-			u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
-			u8g2_DrawStr(&lcd, 100, 11, (char *)rssiData);//
+			#ifdef DEBUG
+				u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
+				u8g2_DrawStr(&lcd, 100, 10, (char *)rssiData);//
+				u8g2_DrawStr(&lcd, 58, 9, (char *)"|debug|");
+				
+				u8g2_SetFont(&lcd, u8g2_font_Terminal_tr);
+				sprintf(rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
+				u8g2_DrawStr(&lcd, 5, 11, (char *)rtcData);
+			#else
+				u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
+				u8g2_DrawStr(&lcd, 100, 10, (char *)rssiData);//
+				
+				u8g2_SetFont(&lcd, u8g2_font_Terminal_tr);
+				sprintf(rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
+				u8g2_DrawStr(&lcd, 30, 11, (char *)rtcData);
+			#endif
 			
-			u8g2_SetFont(&lcd, u8g2_font_Terminal_tr);
-			sprintf(rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
-			u8g2_DrawStr(&lcd, 20, 11, (char *)rtcData);//
+			
 			
 			u8g2_DrawRFrame(&lcd, 0, 0, 128 ,64, 5);
 			u8g2_DrawLine(&lcd, 3,12, 124,12);
 			sprintf(batData, "%05dmV  %05dmA", battery.voltage, battery.current);
-			u8g2_DrawStr(&lcd, 3, 24, (char *)batData);
+			u8g2_DrawStr(&lcd, 3, 23, (char *)batData);
 						
 			sprintf(batData, "%3.1fW  %3.3fWh", battery.power, battery.energy);
-			u8g2_DrawStr(&lcd, 3, 35, (char *)batData);
+			u8g2_DrawStr(&lcd, 3, 33, (char *)batData);
 			
-			sprintf(batData, "%03d Err: %2.1fWh", battery.capacity, battery.lastChargerErr);
-			u8g2_DrawStr(&lcd, 3, 46, (char *)batData);
+			u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
 			
+			sprintf(batData, "Cap: %02d%% Err: %2.1fWh", battery.capacity, battery.lastChargerErr);
+			u8g2_DrawStr(&lcd, 3, 41, (char *)batData);
+			
+			u8g2_DrawLine(&lcd, 3,44, 124,44);
+			sprintf((void *)upsData, "%2.1fV,%2.1fA,%3.1fW      ", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000, mainBattery.power);
+			u8g2_DrawStr(&lcd, 3, 54, (char *)upsData);
+			
+			sprintf((void *)upsData, "%dWh,%d%%", (int)mainBattery.energy, mainBattery.capacity);
+			u8g2_DrawStr(&lcd, 3, 62, (char *)upsData);
 			u8g2_SendBuffer(&lcd);
 			u8g2_ClearBuffer(&lcd);
 			scrUpdateRequest = 0;
